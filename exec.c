@@ -65,9 +65,10 @@ exec(char *path, char **argv)
   sz = KERNBASE - 4;
   if((sz = allocuvm(pgdir, sz, sz - 2*PGSIZE)) == 0)
     goto bad;
-  clearpteu(pgdir, (char*)(sz + PGSIZE));
-  sz += PGSIZE;
-  sp = sz;
+  clearpteu(pgdir, (char*)(sz + PGSIZE)); // make 2nd stack unwritable (buffer)
+  sz += PGSIZE; // should put you at end of stack page - 4
+  sz = PGROUNDUP(sz); // round up to end of stack page
+  sp = KERNBASE - 4; // set stack pointer to beginning of stack page
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
