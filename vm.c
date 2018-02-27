@@ -339,7 +339,7 @@ copyuvm(pde_t *pgdir, uint sz, uint stack_pages)
   }
   
   // copy stack from address space
-  for(i = 0; i < stack_pages*PGSIZE; i += PGSIZE){
+  for(i = STACKBASE; i > stack_pages*PGSIZE; i -= PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
