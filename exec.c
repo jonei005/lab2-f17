@@ -12,7 +12,7 @@ exec(char *path, char **argv)
 {
   char *s, *last;
   int i, off;
-  uint argc, sz, sz_stack, sp, ustack[3+MAXARG+1];
+  uint argc, sz, sz_stack, stack_pages, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
@@ -74,7 +74,9 @@ exec(char *path, char **argv)
     goto bad;
   clearpteu(pgdir, (char*)(sz_stack + PGSIZE));
   sz_stack = PGROUNDUP(sz_stack);
-  sp = STACKBASE;  
+  sp = STACKBASE; 
+  
+  stack_pages = 1; 
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
@@ -106,6 +108,7 @@ exec(char *path, char **argv)
   curproc->pgdir = pgdir;
   curproc->sz = sz;
   curproc->sz_stack = sz_stack;
+  curproc->stack_pages = stack_pages;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
   switchuvm(curproc);
