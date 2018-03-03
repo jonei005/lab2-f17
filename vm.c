@@ -313,7 +313,7 @@ clearpteu(pde_t *pgdir, char *uva)
 // Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
-copyuvm(pde_t *pgdir, uint sz, uint stack_pages)
+copyuvm(pde_t *pgdir, uint sz, uint sz_stack)
 {
   pde_t *d;
   pte_t *pte;
@@ -339,7 +339,7 @@ copyuvm(pde_t *pgdir, uint sz, uint stack_pages)
   }
   
   // copy stack from address space
-  for(i = STACKBASE; i > stack_pages*PGSIZE; i -= PGSIZE){
+  for(i = sz_stack; i < STACKBASE; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))

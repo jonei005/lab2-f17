@@ -66,17 +66,18 @@ exec(char *path, char **argv)
   if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
     goto bad;
   clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
+  sp=sz;
   
   // Allocate two pages at top of user address space for stack
   // Make top page into the stack, and 2nd page inaccessible
   sz_stack = STACKBASE;
   if((sz_stack = allocuvm(pgdir, sz_stack, sz_stack - 2*PGSIZE)) == 0)
     goto bad;
-  clearpteu(pgdir, (char*)(sz_stack + PGSIZE));
-  sz_stack = PGROUNDUP(sz_stack);
+  clearpteu(pgdir, (char*)(sz_stack - 2*PGSIZE));
   sp = STACKBASE; 
   
   stack_pages = 1; 
+  
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
