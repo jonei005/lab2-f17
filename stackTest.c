@@ -6,7 +6,7 @@ int recursiveCall(int);
 
 int main(int argc, char* argv[]){
   printf(1,"Starting recursive calls\n");
-  recursiveCall(5000);
+  recursiveCall(55000);
   exit();
   return 0;
 }
