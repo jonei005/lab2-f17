@@ -82,7 +82,7 @@ trap(struct trapframe *tf)
     	cprintf("End of the stack is %d\n", myproc()->sz_end);
     	if (rcr2()< myproc()->sz_end){
       		cprintf("In if statment and allocating new page\n");
-      		myproc()->sz_end = allocuvm(myproc()->pgdir,(myproc()->sz_end)-PGSIZE,myproc()->sz_end);
+      		myproc()->sz_end = allocuvm(myproc()->pgdir,(myproc()->sz_end)-2*PGSIZE,myproc()->sz_end-PGSIZE);
 
     	}
     }
