@@ -77,8 +77,9 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_PGFLT:
-    cprintf("Offending address is %d",rcr2());
-    if (rcr2() < myproc()->sz_end && rcr2()>(myproc()->sz_end)+PGSIZE){
+    cprintf("Offending address is %d\n",rcr2());
+    if (rcr2() < myproc()->sz_end && rcr2()>(myproc()->sz_end)-PGSIZE){
+      cprintf("In if statment and allocating new page\n");
       myproc()->sz_end = allocuvm(myproc()->pgdir,(myproc()->sz_end)-PGSIZE,myproc()->sz_end);
 
     }
