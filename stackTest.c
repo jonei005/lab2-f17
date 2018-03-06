@@ -1,12 +1,13 @@
 #include "types.h"
-
+#include "user.h"
 
 int recursiveCall(int);
 
 
 int main(int argc, char* argv[]){
-  recursiveCall(100);
-
+  printf(1,"Starting recursive calls\n");
+  recursiveCall(5000);
+  exit();
   return 0;
 }
 
@@ -15,6 +16,7 @@ int recursiveCall(int n){
     return 1;
   }
   else{
+    printf(1, "n = %d\n",n);
     recursiveCall(n-1);
   }
   return 0;
