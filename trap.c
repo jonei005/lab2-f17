@@ -45,7 +45,6 @@ trap(struct trapframe *tf)
       exit();
     return;
   }
-
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
@@ -77,6 +76,15 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
+  case T_PGFLT:
+    cprintf("Offending address is %d",rcr2());
+    if (rcr2() < myproc()->sz_end && rcr2()>(myproc()->sz_end)+PGSIZE){
+      myproc()->sz_end = allocuvm(myproc()->pgdir,(myproc()->sz_end)-PGSIZE,myproc()->sz_end);
+
+    }
+    break;
+    
+    
 
   //PAGEBREAK: 13
   default:
