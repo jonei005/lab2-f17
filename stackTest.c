@@ -5,8 +5,22 @@ int recursiveCall(int);
 
 
 int main(int argc, char* argv[]){
-  printf(1,"Starting recursive calls\n");
-  recursiveCall(5000);
+  printf(1, "Starting recursive calls\n");
+  if (argc != 2) {
+	  printf(1, "usage: stackTest <iterations>\n");
+	  exit();
+  }
+  
+  int numCalls = 0;
+  
+  int i;
+  for (i = 0; argv[1][i] != '\0'; ++i) {
+    numCalls = numCalls*10 + argv[1][i] - '0';
+  }
+  
+  printf(1, "numCalls = %d\n", numCalls);
+  
+  recursiveCall(numCalls);
   exit();
   return 0;
 }
