@@ -32,11 +32,8 @@ int shm_open(int id, char **pointer) {
 	
 	struct proc* p = myproc();
 	pde_t* pgdir = p->pgdir;
-	//uint va = PGROUNDUP(p->sz);
-	uint va = PGROUNDDOWN(p->sz_end) - PGSIZE;
 	int permissions = PTE_U | PTE_W;
 	
-
 	// look through shm_table to see if this id already exists
 	int i;
 	int idFound = 0;
@@ -48,7 +45,7 @@ int shm_open(int id, char **pointer) {
 			cprintf("ID found in shm_table: %d\n", id);
 			idFound = 1;
 				
-			if (mappages(pgdir, (char*)va, PGSIZE, V2P(shm_table.shm_pages[i].frame), permissions) < 0) {
+			if (mappages(pgdir, (char*)p->sz, PGSIZE, V2P(shm_table.shm_pages[i].frame), permissions) < 0) {
 				cprintf("Error in shm_open using mappages\n");
 				return -1;
 			}
@@ -58,12 +55,12 @@ int shm_open(int id, char **pointer) {
 			shm_table.shm_pages[i].refcnt++;
 			release(&(shm_table.lock));
 			
-			// increment sz, as the address space expanded
-			//p->sz = PGROUNDUP(p->sz);
-			p->sz_end = PGROUNDDOWN(p->sz_end) - PGSIZE;
-			
 			// return pointer to the virtual address
-			//*pointer = (char*)va;
+			*pointer = (char*)p->sz;
+			
+			// increment process sz, as the address space expanded
+			p->sz += PGSIZE;
+			
 			return 0;
 		}
 	}
@@ -79,6 +76,7 @@ int shm_open(int id, char **pointer) {
 			cprintf("Error allocating new page with kalloc for shm_open\n");
 			return -1;
 		}
+		memset(mem, 0, PGSIZE);
 		
 		// find empty entry in shm_table
 		int i;
@@ -89,9 +87,10 @@ int shm_open(int id, char **pointer) {
 				break;
 			}
 		}
-		
-		//cprintf("%d", (int)mem);
-		//cprintf(" is the location kalloc gave us.\n");
+		if (entry == -1) {
+			cprintf("No empty entries in shm_table\n");
+			return -1;
+		}
 		
 		// initialize entry: set refcnt to 1, set proper frame and id
 		acquire(&(shm_table.lock));
@@ -100,17 +99,19 @@ int shm_open(int id, char **pointer) {
 		shm_table.shm_pages[entry].id = id;
 		release(&(shm_table.lock));
 		
-		if (mappages(pgdir, (char*)va, PGSIZE, V2P(mem), permissions) < 0) {
+		if (mappages(pgdir, (char*)p->sz, PGSIZE, V2P(shm_table.shm_pages[entry].frame), permissions) < 0) {
 			cprintf("Error in shm_open using mappages (2)\n");
+			release(&(shm_table.lock));
 			return -1;
 		}
 		
-		// increment sz, as the address space expanded
-		//p->sz = PGROUNDUP(p->sz);
-		p->sz_end = PGROUNDDOWN(p->sz_end) - PGSIZE;
-		
 		// return pointer to the virtual address
-		//*pointer = (char*)va;
+		*pointer = (char*)p->sz;
+		
+		// increment sz, as the address space expanded
+		p->sz += PGSIZE;
+		
+		
 		return 0;
 	}
 	
