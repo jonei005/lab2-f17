@@ -45,6 +45,8 @@ int shm_open(int id, char **pointer) {
 			cprintf("ID found in shm_table: %d\n", id);
 			idFound = 1;
 				
+			// get the virtual address stored in frame, convert it to its physical address
+			// then map it to the current process's virtual address space
 			if (mappages(pgdir, (char*)p->sz, PGSIZE, V2P(shm_table.shm_pages[i].frame), permissions) < 0) {
 				cprintf("Error in shm_open using mappages\n");
 				return -1;
@@ -55,7 +57,8 @@ int shm_open(int id, char **pointer) {
 			shm_table.shm_pages[i].refcnt++;
 			release(&(shm_table.lock));
 			
-			// return pointer to the virtual address
+			// return pointer to the virtual address 
+			// so each process gets a pointer to its own address space
 			*pointer = (char*)p->sz;
 			
 			// increment process sz, as the address space expanded
@@ -71,6 +74,7 @@ int shm_open(int id, char **pointer) {
 		// if it doesn't, then allocate a page and map it, then store this information 
 		// in the shm_table
 		
+		// mem will be used to store the virtual address to new allocated memory
 		char* mem;
 		if ((mem = kalloc()) == 0) {
 			cprintf("Error allocating new page with kalloc for shm_open\n");
@@ -92,13 +96,17 @@ int shm_open(int id, char **pointer) {
 			return -1;
 		}
 		
-		// initialize entry: set refcnt to 1, set proper frame and id
+		// initialize entry: set refcnt to 1
+		// set frame for this entry to store the virtual address of the allocated memory
+		// set id for this entry to the id that the user inputted
 		acquire(&(shm_table.lock));
 		shm_table.shm_pages[entry].refcnt = 1;
 		shm_table.shm_pages[entry].frame = mem;
 		shm_table.shm_pages[entry].id = id;
 		release(&(shm_table.lock));
 		
+		// get virtual address of the frame, convert it to its physical address
+		// then map it to the current process virtual address space
 		if (mappages(pgdir, (char*)p->sz, PGSIZE, V2P(shm_table.shm_pages[entry].frame), permissions) < 0) {
 			cprintf("Error in shm_open using mappages (2)\n");
 			release(&(shm_table.lock));
@@ -126,10 +134,10 @@ int shm_close(int id) {
 	int i;
 	for (i = 0; i < 64; i++) {
 		if (shm_table.shm_pages[i].id == id) {
-			// decrement refcnt
+			// decrement refcnt, as one process is leaving
 			acquire(&(shm_table.lock));
 			if (--shm_table.shm_pages[i].refcnt == 0) {
-				// if refcnt reaches 0, clear the entry
+				// if refcnt reaches 0, clear the entry for reuse
 				shm_table.shm_pages[i].id = 0;
 				shm_table.shm_pages[i].frame = 0;
 				cprintf("shm_close: refcnt is 0 for id: %d\n", id);
