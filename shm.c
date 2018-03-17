@@ -29,21 +29,117 @@ void shminit() {
 }
 
 int shm_open(int id, char **pointer) {
+	
+	struct proc* p = myproc();
+	pde_t* pgdir = p->pgdir;
+	//uint va = PGROUNDUP(p->sz);
+	uint va = PGROUNDDOWN(p->sz_end) - PGSIZE;
+	int permissions = PTE_U | PTE_W;
+	
 
-//you write this
-
-
-
-
-return 0; //added to remove compiler warning -- you should decide what to return
+	// look through shm_table to see if this id already exists
+	int i;
+	int idFound = 0;
+	//acquire(&(shm_table.lock));
+	for (i = 0; i < 64; i++) {
+		if (shm_table.shm_pages[i].id == id) {
+			// if it does, use mappages to add the mapping between the virtual 
+			// address and the physical address
+			cprintf("ID found in shm_table: %d\n", id);
+			idFound = 1;
+				
+			if (mappages(pgdir, (char*)va, PGSIZE, V2P(shm_table.shm_pages[i].frame), permissions) < 0) {
+				cprintf("Error in shm_open using mappages\n");
+				return -1;
+			}
+			
+			// increment refcnt for that id
+			acquire(&(shm_table.lock));
+			shm_table.shm_pages[i].refcnt++;
+			release(&(shm_table.lock));
+			
+			// increment sz, as the address space expanded
+			//p->sz = PGROUNDUP(p->sz);
+			p->sz_end = PGROUNDDOWN(p->sz_end) - PGSIZE;
+			
+			// return pointer to the virtual address
+			//*pointer = (char*)va;
+			return 0;
+		}
+	}
+	//release(&(shm_table.lock));
+	
+	if (!idFound) {
+		cprintf("ID not found in shm_table: %d\n", id);
+		// if it doesn't, then allocate a page and map it, then store this information 
+		// in the shm_table
+		
+		char* mem;
+		if ((mem = kalloc()) == 0) {
+			cprintf("Error allocating new page with kalloc for shm_open\n");
+			return -1;
+		}
+		
+		// find empty entry in shm_table
+		int i;
+		int entry = -1;
+		for (i = 0; i < 64; i++) {
+			if (shm_table.shm_pages[i].frame == 0) {
+				entry = i;
+				break;
+			}
+		}
+		
+		//cprintf("%d", (int)mem);
+		//cprintf(" is the location kalloc gave us.\n");
+		
+		// initialize entry: set refcnt to 1, set proper frame and id
+		acquire(&(shm_table.lock));
+		shm_table.shm_pages[entry].refcnt = 1;
+		shm_table.shm_pages[entry].frame = mem;
+		shm_table.shm_pages[entry].id = id;
+		release(&(shm_table.lock));
+		
+		if (mappages(pgdir, (char*)va, PGSIZE, V2P(mem), permissions) < 0) {
+			cprintf("Error in shm_open using mappages (2)\n");
+			return -1;
+		}
+		
+		// increment sz, as the address space expanded
+		//p->sz = PGROUNDUP(p->sz);
+		p->sz_end = PGROUNDDOWN(p->sz_end) - PGSIZE;
+		
+		// return pointer to the virtual address
+		//*pointer = (char*)va;
+		return 0;
+	}
+	
+	cprintf("Something went wrong in shm_open\n");
+	return -1; 
 }
 
 
 int shm_close(int id) {
-//you write this too!
+	// look for shared memory segment in shm_table
+	
+	int i;
+	for (i = 0; i < 64; i++) {
+		if (shm_table.shm_pages[i].id == id) {
+			// decrement refcnt
+			acquire(&(shm_table.lock));
+			if (--shm_table.shm_pages[i].refcnt == 0) {
+				// if refcnt reaches 0, clear the entry
+				shm_table.shm_pages[i].id = 0;
+				shm_table.shm_pages[i].frame = 0;
+				cprintf("shm_close: refcnt is 0 for id: %d\n", id);
+				// no need to free up the page
+				
+				release(&(shm_table.lock));
+				return 0;
+			}
+			release(&(shm_table.lock));
+		}
+	}
 
-
-
-
-return 0; //added to remove compiler warning -- you should decide what to return
+	return 0; 
 }
